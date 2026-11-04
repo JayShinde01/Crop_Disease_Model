@@ -1,0 +1,15 @@
+
+services:
+  - type: web
+    name: plant-disease-detection
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 1 --timeout 180
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.13
+      - key: MODEL_PATH
+        value: model/best_efficientnetb0.keras
+      - key: CLASS_NAMES_PATH
+        value: model/class_names.json

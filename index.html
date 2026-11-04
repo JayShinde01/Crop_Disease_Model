@@ -1,0 +1,292 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Disease Detection</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            width: 100%;
+            max-width: 550px;
+            padding: 35px;
+            border-radius: 18px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #1b5e20;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .upload-box {
+            border: 2px dashed #66bb6a;
+            padding: 25px;
+            border-radius: 12px;
+            background: #f9fff9;
+            cursor: pointer;
+        }
+
+        .upload-box p {
+            color: #388e3c;
+            margin-bottom: 12px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        #preview {
+            display: none;
+            width: 100%;
+            max-height: 280px;
+            object-fit: contain;
+            margin-top: 20px;
+            border-radius: 12px;
+        }
+
+        button {
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            width: 100%;
+            margin-top: 22px;
+            border-radius: 9px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #1b5e20;
+        }
+
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        #loading {
+            display: none;
+            margin-top: 20px;
+            color: #388e3c;
+            font-weight: bold;
+        }
+
+        .result {
+            display: none;
+            margin-top: 25px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 12px;
+            text-align: left;
+        }
+
+        .result h2 {
+            color: #1b5e20;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .result p {
+            margin: 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .error {
+            color: #d32f2f;
+            margin-top: 15px;
+        }
+
+        .confidence-bar {
+            height: 12px;
+            background: #c8e6c9;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        #confidenceFill {
+            height: 100%;
+            width: 0%;
+            background: #2e7d32;
+            transition: width 0.5s;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🌱 Plant Disease Detection</h1>
+
+    <p class="subtitle">
+        Upload a plant image to detect diseases using EfficientNetB0.
+    </p>
+
+    <div class="upload-box">
+        <p>Choose a plant image</p>
+        <input type="file" id="imageInput" accept="image/*">
+    </div>
+
+    <img id="preview" alt="Plant Image Preview">
+
+    <button id="predictBtn" onclick="predictDisease()">
+        Detect Disease
+    </button>
+
+    <div id="loading">
+        Processing image... Please wait.
+    </div>
+
+    <div id="error" class="error"></div>
+
+    <div class="result" id="result">
+
+        <h2>Prediction Result</h2>
+
+        <p>
+            <strong>Predicted Disease:</strong>
+            <span id="disease"></span>
+        </p>
+
+        <p>
+            <strong>Confidence:</strong>
+            <span id="confidence"></span>%
+        </p>
+
+        <div class="confidence-bar">
+            <div id="confidenceFill"></div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_URL = "http://127.0.0.1:5000/predict";
+
+    const imageInput = document.getElementById("imageInput");
+    const preview = document.getElementById("preview");
+
+    // Image Preview
+    imageInput.addEventListener("change", function() {
+
+        const file = this.files[0];
+
+        document.getElementById("result").style.display = "none";
+        document.getElementById("error").innerText = "";
+
+        if (file) {
+
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = "block";
+
+        } else {
+
+            preview.style.display = "none";
+
+        }
+
+    });
+
+
+    // Predict Disease
+    async function predictDisease() {
+
+        const file = imageInput.files[0];
+
+        if (!file) {
+            document.getElementById("error").innerText =
+                "Please select a plant image first.";
+            return;
+        }
+
+        const button = document.getElementById("predictBtn");
+        const loading = document.getElementById("loading");
+        const result = document.getElementById("result");
+        const error = document.getElementById("error");
+
+        error.innerText = "";
+        result.style.display = "none";
+
+        button.disabled = true;
+        loading.style.display = "block";
+
+        const formData = new FormData();
+        formData.append("image", file);
+
+        try {
+
+            const response = await fetch(API_URL, {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Prediction failed.");
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || "Prediction failed.");
+            }
+
+            document.getElementById("disease").innerText =
+                data.predicted_class;
+
+            document.getElementById("confidence").innerText =
+                data.confidence;
+
+            document.getElementById("confidenceFill").style.width =
+                Math.min(100, Math.max(0, data.confidence)) + "%";
+
+            result.style.display = "block";
+
+        } catch (err) {
+
+            error.innerText = "Error: " + err.message;
+
+        } finally {
+
+            loading.style.display = "none";
+            button.disabled = false;
+
+        }
+
+    }
+
+</script>
+
+</body>
+</html>
